@@ -82,7 +82,27 @@ export class PresentationGenerationApi {
       throw error;
     }
   }
+    static async presentationPrepare(presentationData: any) {
+    try {
+      const response = await fetch(
+        `/api/v1/ppt/presentation/prepare`,
+        {
+          method: "POST",
+          headers: getHeader(),
+          body: JSON.stringify(presentationData),
+          cache: "no-cache",
+        }
+      );
+      
+      return await ApiResponseHandler.handleResponse(response, "Failed to prepare presentation");
+    } catch (error) {
+      console.error("error in data generation", error);
+      throw error;
+    }
+  }
+  
 
+  // EDIT SLIDE
   static async editSlide(
     slide_id: string,
     prompt: string
@@ -108,6 +128,29 @@ export class PresentationGenerationApi {
     }
   }
 
+  static async editSlideWithHtml(slide_id: string,prompt: string, html: string) {
+    try {
+      const response = await fetch(
+        `/api/v1/ppt/slide/edit-html`,
+        {
+          method: "POST",
+          headers: getHeader(),
+          body: JSON.stringify({
+            id: slide_id,
+            prompt,
+            html,
+          }),
+          cache: "no-cache",
+        }
+      );
+
+      return await ApiResponseHandler.handleResponse(response, "Failed to update slide with html");
+    } catch (error) { 
+      console.error("error in slide update with html", error);
+      throw error;
+    }
+  }
+  
   static async updatePresentationContent(body: any) {
     try {
       const response = await fetch(
@@ -127,25 +170,7 @@ export class PresentationGenerationApi {
     }
   }
 
-  static async presentationPrepare(presentationData: any) {
-    try {
-      const response = await fetch(
-        `/api/v1/ppt/presentation/prepare`,
-        {
-          method: "POST",
-          headers: getHeader(),
-          body: JSON.stringify(presentationData),
-          cache: "no-cache",
-        }
-      );
-      
-      return await ApiResponseHandler.handleResponse(response, "Failed to prepare presentation");
-    } catch (error) {
-      console.error("error in data generation", error);
-      throw error;
-    }
-  }
-  
+
   // IMAGE AND ICON SEARCH
   
   

@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Slide } from "../../types/slide";
-import { Loader2, PlusIcon, Trash2, WandSparkles } from "lucide-react";
+import { Loader2, PlusIcon, Trash2, WandSparkles, PenSquare } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -40,6 +39,8 @@ const SlideContent = ({
   const { renderSlideContent, loading } = useGroupLayouts();
 
   const handleSubmit = async () => {
+    handleEditSlideWithHtml();
+    return;
     const element = document.getElementById(
       `slide-${slide.index}-prompt`
     ) as HTMLInputElement;
@@ -79,6 +80,41 @@ const SlideContent = ({
       });
     }
   };
+
+
+  const getHtmlBySlideIndex = (index: number) => {
+    const html = document.querySelector(`#slide-${index} .editable-layout-wrapper`) as HTMLInputElement;
+    // need to remove two classes from the html 
+    if (html) {
+      // Create a copy instead of modifying the original
+      const clone = html.cloneNode(true) as HTMLElement;
+      clone.removeAttribute("class");
+      clone.querySelector('.tiptap-text-replacer')?.removeAttribute("class");
+      return clone;
+    }
+    return html;
+  }
+
+  const handleEditSlideWithHtml = async () => {
+    const html = getHtmlBySlideIndex(slide.index);
+
+    const prompt = document.getElementById(
+      `slide-${slide.index}-prompt`
+    ) as HTMLInputElement;
+    const promptValue = prompt?.value;
+
+    try {
+      const response = await PresentationGenerationApi.editSlideWithHtml(slide.id, promptValue, html.innerHTML);
+      dispatch(updateSlide({ index: slide.index, slide: response }));
+      console.log("response", response);
+      toast.success("Slide updated successfully");
+    } catch (error: any) {
+      console.error("Error editing slide with html:", error);
+      toast.error("Error editing slide with html.", {
+        description: error.message || "Error editing slide with html.",
+      });
+    }
+  }
   // Scroll to the new slide when streaming and new slides are being generated
   useEffect(() => {
     if (
@@ -159,7 +195,7 @@ const SlideContent = ({
                     <div
                       className={`p-2 group-hover:scale-105 rounded-lg bg-[#5141e5] hover:shadow-md transition-all duration-300 cursor-pointer shadow-md `}
                     >
-                      <WandSparkles className="w-4 sm:w-5 h-4 sm:h-5 text-white" />
+                      <PenSquare className="w-4 sm:w-5 h-4 sm:h-5 text-white" />
                     </div>
                   </ToolTip>
                 </PopoverTrigger>

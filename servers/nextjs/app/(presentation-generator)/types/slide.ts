@@ -33,4 +33,5 @@ export interface Slide {
   graph_id: string | null;
   presentation?: string;
   content: SlideContent;
+  html_content?: string | null;
 }

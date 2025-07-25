@@ -39,19 +39,24 @@ export const PresentationCard = ({
     e.preventDefault();
     e.stopPropagation();
 
+    try {
+      const response = await DashboardApi.deletePresentation(id);
 
-    const response = await DashboardApi.deletePresentation(id);
-
-    if (response) {
-      toast.success("Presentation deleted", {
-        description: "The presentation has been deleted successfully",
-      });
-      if (onDeleted) {
-        onDeleted(id);
+      if (response) {
+        toast.success("Presentation deleted", {
+          description: "The presentation has been deleted successfully",
+        });
+        if (onDeleted) {
+          onDeleted(id);
+        }
+      } else {
+        toast.error("Error deleting presentation");
       }
-    } else {
-      toast.error("Error deleting presentation");
+
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete presentation. Please try again.");
     }
+
   };
   return (
     <Card

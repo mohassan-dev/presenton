@@ -50,6 +50,7 @@ export const useGroupLayouts = () => {
             if (isEditMode) {
                 return (
                     <EditableLayoutWrapper
+                        key={slide.id}
                         slideIndex={slide.index}
                         slideData={slide.content}
 
@@ -70,7 +71,7 @@ export const useGroupLayouts = () => {
                                 }
                             }}
                         >
-                            <Layout data={slide.content} />
+                            {slide.html_content ? <div dangerouslySetInnerHTML={{ __html: slide.html_content }} /> : <Layout data={slide.content} />}
                         </TiptapTextReplacer>
                     </EditableLayoutWrapper>
                 );

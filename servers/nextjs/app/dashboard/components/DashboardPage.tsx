@@ -8,6 +8,7 @@ import { DashboardApi } from "../api/dashboard";
 import { PresentationGrid } from "./PresentationGrid";
 
 import Header from "./Header";
+import { toast } from "sonner";
 
 const DashboardPage: React.FC = () => {
   const [presentations, setPresentations] = useState<any>(null);
@@ -26,9 +27,11 @@ const DashboardPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const data = await DashboardApi.getPresentations();
+
       data.sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
       setPresentations(data);
-    } catch (err) {
+    } catch (err: any) {
+      toast.error(err.message || "Failed to fetch presentations. Please try again.");
       setError(null);
       setPresentations([]);
     } finally {
