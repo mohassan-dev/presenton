@@ -18,7 +18,7 @@ import {
 export const layoutId = "generic-key-metrics-slide";
 export const layoutName = "Generic Key Metrics Slide";
 export const layoutDescription =
-  "A flexible slide for presenting four key metrics and two charts (line and donut/pie), suitable for any domain. Customize metric cards, chart titles, and chart data for your use case.";
+  "A flexible slide for presenting four key metrics and up to two optional charts (line and donut/pie), suitable for visualizing a wide variety of quantitative data. The line chart can display trends or changes over time or categories, while the donut/pie chart can represent proportional breakdowns or distributions. Either chart can be omitted if not needed, allowing you to tailor the visualization to your specific data and presentation requirements.";
 
 // Schema definition
 export const Schema = z.object({
@@ -28,14 +28,6 @@ export const Schema = z.object({
     .max(50, "Title must be 50 characters or less")
     .default("Key Metrics Overview")
     .describe("Main title for the slide"),
-
-  description: z
-    .string()
-    .max(200, "Description must be 200 characters or less")
-    .default(
-      "A comprehensive dashboard showcasing key performance indicators and trend analysis across multiple dimensions.",
-    )
-    .describe("Description text displayed above the metrics and charts."),
 
   metricCards: z
     .array(
@@ -47,8 +39,15 @@ export const Schema = z.object({
         value: z.string().min(1, "Value is required").max(16, "Value too long"),
         change: z
           .string()
-          .min(1, "Change is required")
-          .max(10, "Change too long"),
+          .min(2, "Change is required and must be a percentage (e.g. '+12%')")
+          .max(10, "Change too long")
+          .regex(
+            /^[+-]?\d+(\.\d+)?%$/,
+            "Change must be a percentage string, e.g. '+12%' or '-3%'",
+          )
+          .describe(
+            "Change in percentage format (e.g. '+12%' or '-3%'). Must always be a percentage.",
+          ),
         changeType: z.enum(["increase", "decrease"]).default("increase"),
         description: z
           .string()
@@ -88,14 +87,17 @@ export const Schema = z.object({
         description: "vs last quarter",
       },
     ])
-    .describe("Array of four key metric cards to display at the top."),
+    .describe(
+      "Array of four key metric cards to display at the top. The 'change' field must always be a percentage string (e.g. '+12%' or '-3%').",
+    ),
 
   leftChartTitle: z
     .string()
     .min(1, "Left chart title is required")
     .max(30, "Title must be 30 characters or less")
     .default("Growth Trends")
-    .describe("Title for the left (line) chart"),
+    .describe("Title for the left (line) chart")
+    .optional(),
 
   leftChartData: z
     .array(
@@ -114,14 +116,16 @@ export const Schema = z.object({
       { label: "May", value: 110 },
       { label: "Jun", value: 125 },
     ])
-    .describe("Data for the left line chart."),
+    .describe("Data for the left line chart.")
+    .optional(),
 
   rightChartTitle: z
     .string()
     .min(1, "Right chart title is required")
     .max(40, "Title must be 40 characters or less")
     .default("Market Distribution")
-    .describe("Title for the right (donut/pie) chart"),
+    .describe("Title for the right (donut/pie) chart")
+    .optional(),
 
   rightChartData: z
     .array(
@@ -139,7 +143,8 @@ export const Schema = z.object({
       { label: "Startup", value: 15, color: "#f59e0b" },
       { label: "Other", value: 10, color: "#ef4444" },
     ])
-    .describe("Data for the right donut/pie chart."),
+    .describe("Data for the right donut/pie chart.")
+    .optional(),
 });
 
 // Type inference
@@ -211,11 +216,6 @@ const SlideComponent = ({ data = {} }: { data?: Partial<SchemaType> }) => {
         <h1 className="text-5xl font-bold text-slate-800 mb-3">
           {parsed.title}
         </h1>
-        {parsed.description && (
-          <p className="text-slate-600 text-lg max-w-4xl leading-relaxed">
-            {parsed.description}
-          </p>
-        )}
       </div>
 
       {/* Top Row - Metric Cards */}

@@ -15,7 +15,7 @@ import * as z from "zod";
 export const layoutId = "financial-indicators-template";
 export const layoutName = "Financial Indicators Template";
 export const layoutDescription =
-  "A generic slide template for visualizing placeholder financial indicators, including a bar chart and key metric cards. All content is placeholder and customizable.";
+  "A flexible slide template for visualizing financial indicators, supporting bar charts for time-series or categorical data and customizable key metric cards. Both chart and metric cards are optional and can be shown independently based on your data and presentation needs.";
 
 // Schema definition
 export const Schema = z.object({
@@ -29,16 +29,50 @@ export const Schema = z.object({
         "Main dashboard title displayed at the top right (placeholder)",
     }),
 
+  barChartKeys: z
+    .array(
+      z.object({
+        key: z.string().min(1, "Key is required"),
+        label: z
+          .string()
+          .min(1, "Label is required")
+          .max(30, "Label must be 30 characters or less"),
+        color: z.string().min(1, "Color is required"),
+      }),
+    )
+    .default([
+      {
+        key: "grossProfitMargin",
+        label: "Gross Profit Margin",
+        color: "#F472B6",
+      },
+      {
+        key: "operatingExpenseRatio",
+        label: "Operating Expense Ratio",
+        color: "#A78BFA",
+      },
+      {
+        key: "grossProfitMargin2",
+        label: "Gross Profit Margin 2",
+        color: "#60A5FA",
+      },
+    ])
+    .meta({
+      description:
+        "Keys and display info for each bar in the bar chart. Each object should have a key (matches a field in financialStatsData), label, and color.",
+    })
+    .optional(),
+
   description: z
     .string()
     .min(1, "Description is required")
-    .max(250, "Description must be 250 characters or less")
+    .max(100, "Description must be 100 characters or less")
     .default(
-      "This is a placeholder description for your financial indicators dashboard. Replace this text with your own summary or insights.",
+      "This template allows you to visualize a variety of financial indicators.",
     )
     .meta({
       description:
-        "Descriptive text explaining the financial indicators shown in the dashboard (placeholder)",
+        "Descriptive text explaining the types of charts and data that can be visualized. Both the bar chart and key metric cards are optional and can be shown independently.",
     }),
 
   // Financial Statistics Chart Data
@@ -65,44 +99,7 @@ export const Schema = z.object({
     )
     .min(3)
     .max(12)
-    .default([
-      {
-        month: "Jan",
-        grossProfitMargin: 10,
-        operatingExpenseRatio: 15,
-        grossProfitMargin2: 20,
-      },
-      {
-        month: "Feb",
-        grossProfitMargin: 12,
-        operatingExpenseRatio: 18,
-        grossProfitMargin2: 22,
-      },
-      {
-        month: "Mar",
-        grossProfitMargin: 15,
-        operatingExpenseRatio: 20,
-        grossProfitMargin2: 25,
-      },
-      {
-        month: "Apr",
-        grossProfitMargin: 18,
-        operatingExpenseRatio: 22,
-        grossProfitMargin2: 28,
-      },
-      {
-        month: "May",
-        grossProfitMargin: 20,
-        operatingExpenseRatio: 25,
-        grossProfitMargin2: 30,
-      },
-      {
-        month: "Jun",
-        grossProfitMargin: 22,
-        operatingExpenseRatio: 28,
-        grossProfitMargin2: 32,
-      },
-    ])
+    .optional()
     .meta({
       description:
         "Financial statistics chart data showing monthly trends for gross profit margin, operating expense ratio, and gross profit margin metrics (placeholder)",
@@ -218,237 +215,221 @@ const CustomTooltip = ({
 
 // Component definition
 const SlideComponent = ({ data }: { data: Partial<SchemaType> }) => {
-  // Default data (all placeholder)
-  const defaultData = {
-    title: "Financial Indicators",
-    description:
-      "This is a placeholder description for your financial indicators dashboard. Replace this text with your own summary or insights.",
-    financialStatsData: [
-      {
-        month: "Jan",
-        grossProfitMargin: 10,
-        operatingExpenseRatio: 15,
-        grossProfitMargin2: 20,
-      },
-      {
-        month: "Feb",
-        grossProfitMargin: 12,
-        operatingExpenseRatio: 18,
-        grossProfitMargin2: 22,
-      },
-      {
-        month: "Mar",
-        grossProfitMargin: 15,
-        operatingExpenseRatio: 20,
-        grossProfitMargin2: 25,
-      },
-      {
-        month: "Apr",
-        grossProfitMargin: 18,
-        operatingExpenseRatio: 22,
-        grossProfitMargin2: 28,
-      },
-      {
-        month: "May",
-        grossProfitMargin: 20,
-        operatingExpenseRatio: 25,
-        grossProfitMargin2: 30,
-      },
-      {
-        month: "Jun",
-        grossProfitMargin: 22,
-        operatingExpenseRatio: 28,
-        grossProfitMargin2: 32,
-      },
-    ],
-    grossProfitMargin1: {
-      title: "Gross Profit Margin",
-      value: "$99M",
-      percentage: 45,
-      label: "from last period",
-    },
-    operatingExpenseRatio: {
-      title: "Operating Expense Ratio",
-      value: "$104M",
-      percentage: 20,
-      label: "from last period",
-    },
-    grossProfitMargin2: {
-      title: "Gross Profit Margin",
-      value: "$130M",
-      percentage: 15,
-      label: "from last period",
-    },
-  };
+  // Only use provided data for rendering; do not use any defaultData
+  const mergedData = { ...data };
 
-  const mergedData = { ...defaultData, ...data };
+  // Use barChartKeys from data or schema default
+  const barChartKeys =
+    mergedData.barChartKeys && Array.isArray(mergedData.barChartKeys)
+      ? mergedData.barChartKeys
+      : [
+          {
+            key: "grossProfitMargin",
+            label: "Gross Profit Margin",
+            color: "#F472B6",
+          },
+          {
+            key: "operatingExpenseRatio",
+            label: "Operating Expense Ratio",
+            color: "#A78BFA",
+          },
+          {
+            key: "grossProfitMargin2",
+            label: "Gross Profit Margin 2",
+            color: "#60A5FA",
+          },
+        ];
 
-  // Check if chart data is available and valid (array with at least 1 item)
+  // Only show chart if chart data is provided and valid (no default)
   const hasChartData =
     Array.isArray(mergedData.financialStatsData) &&
-    mergedData.financialStatsData.length > 0;
+    mergedData.financialStatsData.length > 0 &&
+    barChartKeys.some((bar) =>
+      mergedData.financialStatsData.some(
+        (row) => typeof row[bar.key] === "number" && row[bar.key] !== 0,
+      ),
+    );
 
   return (
     <div className="px-16 pb-16 w-full max-w-[1280px] aspect-video bg-gradient-to-br from-blue-50 to-purple-50 p-8 font-sans relative overflow-hidden">
       {/* Main Content Grid */}
       <div className="grid grid-cols-12 gap-6 h-full">
-        {/* Left Side - Financial Statistics Chart with Recharts */}
-        {hasChartData && (
-          <div
-            className="col-span-7 bg-white rounded-xl shadow-lg p-6 flex flex-col"
-            style={{ height: "100%" }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">
-                {mergedData.title}
-              </h3>
-            </div>
+        {hasChartData ? (
+          <>
+            {/* Left Side - Financial Statistics Chart with Recharts */}
+            <div
+              className="col-span-7 bg-white rounded-xl shadow-lg p-6 flex flex-col"
+              style={{ height: "100%" }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {mergedData.title}
+                </h3>
+              </div>
+              <div className="flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={mergedData.financialStatsData}
+                    margin={{
+                      top: 20,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
+                    }}
+                    barCategoryGap="20%"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis
+                      dataKey="month"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "#666" }}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "#666" }}
+                      tickFormatter={(value) => `$${value}M`}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
 
-            <div className="flex-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={mergedData.financialStatsData}
-                  margin={{
-                    top: 20,
-                    right: 30,
-                    left: 20,
-                    bottom: 5,
-                  }}
-                  barCategoryGap="20%"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis
-                    dataKey="month"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: "#666" }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: "#666" }}
-                    tickFormatter={(value) => `$${value}M`}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend
-                    wrapperStyle={{ paddingTop: "20px" }}
-                    iconType="circle"
-                  />
-                  <Bar
-                    dataKey="grossProfitMargin"
-                    fill="#F472B6"
-                    name="Gross Profit Margin"
-                    radius={[2, 2, 0, 0]}
-                    maxBarSize={40}
-                  />
-                  <Bar
-                    dataKey="operatingExpenseRatio"
-                    fill="#A78BFA"
-                    name="Operating Expense Ratio"
-                    radius={[2, 2, 0, 0]}
-                    maxBarSize={40}
-                  />
-                  <Bar
-                    dataKey="grossProfitMargin2"
-                    fill="#60A5FA"
-                    name="Gross Profit Margin 2"
-                    radius={[2, 2, 0, 0]}
-                    maxBarSize={40}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+                    {barChartKeys.map((bar) => (
+                      <Bar
+                        key={bar.key}
+                        dataKey={bar.key}
+                        fill={bar.color}
+                        name={bar.label}
+                        radius={[2, 2, 0, 0]}
+                        maxBarSize={40}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Dynamic Legend below chart */}
+              <div className="flex justify-center gap-6 mt-4">
+                {barChartKeys.map((bar) => (
+                  <div key={bar.key} className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded"
+                      style={{ background: bar.color }}
+                    ></div>
+                    <span className="text-sm text-slate-600">{bar.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Right Side - Title, Description */}
+            <div className="col-span-5 flex flex-col">
+              <div className="mb-8">
+                <h1 className="text-5xl font-bold text-gray-900 mb-4 leading-tight">
+                  {mergedData.title}
+                </h1>
+                <div className="w-16 h-1 bg-gray-800 rounded mb-6"></div>
+                <p className="text-gray-600 leading-relaxed mb-6">
+                  {mergedData.description}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="col-span-12 flex flex-col justify-start">
+            <div className="mb-8 text-left">
+              <h1 className="text-5xl font-bold text-gray-900 mb-4 leading-tight">
+                {mergedData.title}
+              </h1>
+              <div className="w-16 h-1 bg-gray-800 rounded mb-6"></div>
+              <p className="text-gray-600 leading-relaxed mb-6">
+                {mergedData.description}
+              </p>
             </div>
           </div>
         )}
 
-        {/* Right Side - Title, Description and Metrics Button */}
-        <div className="col-span-5 flex flex-col">
-          {/* Title and Description */}
-          <div className="mb-8">
-            <h1 className="text-5xl font-bold text-gray-900 mb-4 leading-tight">
-              {mergedData.title}
-            </h1>
-            <div className="w-16 h-1 bg-gray-800 rounded mb-6"></div>
-            <p className="text-gray-600 leading-relaxed mb-6">
-              {mergedData.description}
-            </p>
-          </div>
-        </div>
-
         {/* Bottom Row - Key Metrics Cards */}
-        <div className="col-span-4 bg-white rounded-xl shadow-lg p-4 flex flex-col justify-center">
-          <h4 className="text-base font-semibold text-gray-700 mb-2">
-            {mergedData.grossProfitMargin1.title}
-          </h4>
-          <div className="flex items-end gap-2 mb-2">
-            <div className="text-2xl font-bold text-gray-900">
-              {mergedData.grossProfitMargin1.value}
+        {mergedData.grossProfitMargin1 && (
+          <div className="col-span-4 bg-white rounded-xl shadow-lg p-4 flex flex-col justify-center">
+            <h4 className="text-base font-semibold text-gray-700 mb-2">
+              {mergedData.grossProfitMargin1.title}
+            </h4>
+            <div className="flex items-end gap-2 mb-2">
+              <div className="text-2xl font-bold text-gray-900">
+                {mergedData.grossProfitMargin1.value}
+              </div>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-100 rounded text-green-600 text-xs font-medium">
+                <span>↑</span>
+                <span>{mergedData.grossProfitMargin1.percentage}%</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-100 rounded text-green-600 text-xs font-medium">
-              <span>↑</span>
-              <span>{mergedData.grossProfitMargin1.percentage}%</span>
+            <div className="text-xs text-gray-500 mb-2">
+              {mergedData.grossProfitMargin1.label}
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-pink-400 h-1.5 rounded-full transition-all duration-700 max-w-full"
+                style={{
+                  width: `${Math.min(mergedData.grossProfitMargin1.percentage, 100)}%`,
+                }}
+              ></div>
             </div>
           </div>
-          <div className="text-xs text-gray-500 mb-2">
-            {mergedData.grossProfitMargin1.label}
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-1.5">
-            <div
-              className="bg-pink-400 h-1.5 rounded-full transition-all duration-700"
-              style={{ width: `${mergedData.grossProfitMargin1.percentage}%` }}
-            ></div>
-          </div>
-        </div>
+        )}
 
-        <div className="col-span-4 bg-white rounded-xl shadow-lg p-4 flex flex-col justify-center">
-          <h4 className="text-base font-semibold text-gray-700 mb-2">
-            {mergedData.operatingExpenseRatio.title}
-          </h4>
-          <div className="flex items-end gap-2 mb-2">
-            <div className="text-2xl font-bold text-gray-900">
-              {mergedData.operatingExpenseRatio.value}
+        {mergedData.operatingExpenseRatio && (
+          <div className="col-span-4 bg-white rounded-xl shadow-lg p-4 flex flex-col justify-center">
+            <h4 className="text-base font-semibold text-gray-700 mb-2">
+              {mergedData.operatingExpenseRatio.title}
+            </h4>
+            <div className="flex items-end gap-2 mb-2">
+              <div className="text-2xl font-bold text-gray-900">
+                {mergedData.operatingExpenseRatio.value}
+              </div>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-100 rounded text-green-600 text-xs font-medium">
+                <span>↑</span>
+                <span>{mergedData.operatingExpenseRatio.percentage}%</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-100 rounded text-green-600 text-xs font-medium">
-              <span>↑</span>
-              <span>{mergedData.operatingExpenseRatio.percentage}%</span>
+            <div className="text-xs text-gray-500 mb-2">
+              {mergedData.operatingExpenseRatio.label}
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-purple-400 h-1.5 rounded-full transition-all duration-700 max-w-full"
+                style={{
+                  width: `${Math.min(mergedData.operatingExpenseRatio.percentage, 100)}%`,
+                }}
+              ></div>
             </div>
           </div>
-          <div className="text-xs text-gray-500 mb-2">
-            {mergedData.operatingExpenseRatio.label}
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-1.5">
-            <div
-              className="bg-purple-400 h-1.5 rounded-full transition-all duration-700"
-              style={{
-                width: `${mergedData.operatingExpenseRatio.percentage}%`,
-              }}
-            ></div>
-          </div>
-        </div>
+        )}
 
-        <div className="col-span-4 bg-white rounded-xl shadow-lg p-4 flex flex-col justify-center">
-          <h4 className="text-base font-semibold text-gray-700 mb-2">
-            {mergedData.grossProfitMargin2.title}
-          </h4>
-          <div className="flex items-end gap-2 mb-2">
-            <div className="text-2xl font-bold text-gray-900">
-              {mergedData.grossProfitMargin2.value}
+        {mergedData.grossProfitMargin2 && (
+          <div className="col-span-4 bg-white rounded-xl shadow-lg p-4 flex flex-col justify-center">
+            <h4 className="text-base font-semibold text-gray-700 mb-2">
+              {mergedData.grossProfitMargin2.title}
+            </h4>
+            <div className="flex items-end gap-2 mb-2">
+              <div className="text-2xl font-bold text-gray-900">
+                {mergedData.grossProfitMargin2.value}
+              </div>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-100 rounded text-green-600 text-xs font-medium">
+                <span>↑</span>
+                <span>{mergedData.grossProfitMargin2.percentage}%</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-100 rounded text-green-600 text-xs font-medium">
-              <span>↑</span>
-              <span>{mergedData.grossProfitMargin2.percentage}%</span>
+            <div className="text-xs text-gray-500 mb-2">
+              {mergedData.grossProfitMargin2.label}
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-blue-400 h-1.5 rounded-full transition-all duration-700 max-w-full"
+                style={{
+                  width: `${Math.min(mergedData.grossProfitMargin2.percentage, 100)}%`,
+                }}
+              ></div>
             </div>
           </div>
-          <div className="text-xs text-gray-500 mb-2">
-            {mergedData.grossProfitMargin2.label}
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-1.5">
-            <div
-              className="bg-blue-400 h-1.5 rounded-full transition-all duration-700"
-              style={{ width: `${mergedData.grossProfitMargin2.percentage}%` }}
-            ></div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

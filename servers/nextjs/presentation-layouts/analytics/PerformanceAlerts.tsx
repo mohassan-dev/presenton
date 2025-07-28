@@ -18,7 +18,7 @@ import {
 export const layoutId = "performance-alerts-slide";
 export const layoutName = "Performance Alerts Slide";
 export const layoutDescription =
-  "A flexible template slide for visualizing performance alerts, featuring a line chart for churn rates and a donut chart for inventory turnover with gauge indicators.";
+  "A versatile template slide for visualizing a variety of performance metrics using optional charts. Supports a time-series line chart for trends (such as churn rates or other KPIs over time), a donut (pie) chart for categorical or distributional data (such as inventory or product performance breakdowns), and gauge indicators for highlighting key values or targets. Each chart is independently optional—either or both can be displayed depending on the available data and visualization needs.";
 
 // Schema definition
 export const Schema = z.object({
@@ -35,7 +35,7 @@ export const Schema = z.object({
     .string()
     .min(1, "Churn rate title is required")
     .max(30, "Title must be 30 characters or less")
-    .default("Monthly Churn Analysis")
+    .default("Churn Analysis")
     .meta({
       description: "Title for the churn rate chart section",
     }),
@@ -58,7 +58,7 @@ export const Schema = z.object({
     .string()
     .min(1, "Inventory title is required")
     .max(40, "Title must be 40 characters or less")
-    .default("Product Performance Distribution")
+    .default("Product Performance")
     .meta({
       description: "Title for the inventory turnover section",
     }),
@@ -111,6 +111,7 @@ export const Schema = z.object({
       { month: "Sep", currentChurn: 25, targetChurn: 16 },
       { month: "Oct", currentChurn: 23, targetChurn: 15 },
     ])
+    .optional()
     .meta({
       description: "Monthly churn rate data for the line chart",
     }),
@@ -199,10 +200,39 @@ const PieTooltip = ({ active, payload }: any) => {
   return null;
 };
 
+// Helper function to trim string fields to schema max length
+function trimStringFieldsToSchemaLimits(
+  data: Partial<SchemaType>,
+): Partial<SchemaType> {
+  const trimmed: Partial<SchemaType> = { ...data };
+  if (typeof trimmed.churnRateTitle === "string") {
+    trimmed.churnRateTitle = trimmed.churnRateTitle.slice(0, 30);
+  }
+  if (typeof trimmed.inventoryTitle === "string") {
+    trimmed.inventoryTitle = trimmed.inventoryTitle.slice(0, 40);
+  }
+  return trimmed;
+}
+
 // Component definition
 const SlideComponent = ({ data = {} }: { data?: Partial<SchemaType> }) => {
+  // Defensive: Ensure churnData meets minimum length for schema validation
+  let safeData = { ...data };
+  if (
+    !safeData.churnData ||
+    !Array.isArray(safeData.churnData) ||
+    safeData.churnData.length < 6
+  ) {
+    // Remove churnData so schema default is used
+    const { churnData, ...rest } = safeData;
+    safeData = rest;
+  }
+
+  // Trim string fields to schema max length to avoid ZodError
+  safeData = trimStringFieldsToSchemaLimits(safeData);
+
   // Parse data with schema defaults
-  const parsedData = Schema.parse(data);
+  const parsedData = Schema.parse(safeData);
 
   // Transform inventory data for pie chart
   const inventoryData = [
@@ -225,9 +255,6 @@ const SlideComponent = ({ data = {} }: { data?: Partial<SchemaType> }) => {
 
   // Determine alert status based on current vs target churn
   const isChurnAlert = parsedData.currentChurnRate > parsedData.targetChurn;
-  const churnDifference = Math.abs(
-    parsedData.currentChurnRate - parsedData.targetChurn,
-  );
 
   // Check if churnData is available and non-empty
   const hasChurnData =

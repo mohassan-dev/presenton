@@ -3,6 +3,17 @@
  *
  * A flexible template slide for presenting recommendations in a card format.
  * All text and data are placeholders for customization.
+ *
+ * WHY DO 4 RECOMMENDATION BOXES SOMETIMES SHOW?
+ * ------------------------------------------------
+ * The recommendations array is defined in the schema with .min(3).max(3), so it should always have exactly 3 items.
+ * However, if the data passed in contains more than 3 recommendations (for example, from user input or external data),
+ * the UI code will render as many as are present in parsed.recommendations, regardless of the schema's max(3).
+ * This is because the .max(3) constraint is only enforced when using Schema.parse(), but if you merge in extra data
+ * after parsing, or if the data prop already contains more than 3, the UI will render all of them.
+ *
+ * To guarantee only 3 cards are ever shown, you should explicitly slice the recommendations array in the component render.
+ * See the updated code below.
  */
 
 import * as z from "zod";
@@ -97,6 +108,11 @@ const SlideComponent = ({ data }: { data: Partial<SchemaType> }) => {
   // Merge defaults with provided data
   const parsed = { ...Schema.parse({}), ...data };
 
+  // Always show only the first 3 recommendations, even if more are present
+  const recommendationsToShow = Array.isArray(parsed.recommendations)
+    ? parsed.recommendations.slice(0, 3)
+    : [];
+
   return (
     <div className="px-16 pb-16 w-full max-w-[1280px] aspect-video bg-gradient-to-br from-purple-50 to-blue-50 p-8 relative overflow-hidden">
       {/* Background decorative elements */}
@@ -163,7 +179,7 @@ const SlideComponent = ({ data }: { data: Partial<SchemaType> }) => {
 
       {/* Recommendation Cards */}
       <div className="grid grid-cols-3 gap-8 mt-8">
-        {parsed.recommendations?.map((recommendation, index) => (
+        {recommendationsToShow.slice(0, 3).map((recommendation, index) => (
           <div
             key={index}
             className="group hover:transform hover:scale-105 transition-all duration-300"
