@@ -93,10 +93,13 @@ class WorkflowOrchestrator:
             
             result = await generate_outline(prompt, **kwargs)
 
-            # Update the Context and transition to outline generated
+            # Defensive: handle both dict and model object for slides
+            outlines = result.get("outlines")
+            if outlines and hasattr(outlines, "model_dump"):
+                outlines = [slide.model_dump() for slide in outlines]
             context_updates = {
                 "title": result["title"],
-                "outlines": result["outlines"]
+                "outlines": outlines
             }
             fsm.transition(PresentationState.OUTLINE_GENERATED, context_updates)
 
@@ -105,7 +108,7 @@ class WorkflowOrchestrator:
                 "state": fsm.state.name,
                 "progress": fsm.get_workflow_progress(),
                 "next_action": "Review outline and approve",
-                "result": result,
+                "result": {"title": result["title"], "outlines": outlines},
                 "can_approve": True
             }
 
@@ -196,11 +199,14 @@ class WorkflowOrchestrator:
             fsm.transition(PresentationState.GENERATION_IN_PROGRESS)
 
             
-            notes = kwargs.get('notes', [])
+            # notes = kwargs.get('notes', [])
+            # If outlines is a dict with 'slides', extract the list
+            outlines = fsm.context.outlines
+            if isinstance(outlines, dict) and "slides" in outlines:
+                outlines = outlines["slides"]
             result = await process_post_outline_workflow(
                 title=fsm.context.title,
-                outlines=fsm.context.outlines,
-                notes=notes,
+                outlines=outlines,
                 layout=fsm.context.layout,
                 prompt=fsm.context.metadata.get('original_prompt', ""),
                 sql_session=None,

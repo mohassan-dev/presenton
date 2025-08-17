@@ -32,4 +32,12 @@ def register_tools(mcp, orchestrator):
         register_continue_workflow
     ]
     for tool in tools:
-        tool(mcp, orchestrator)
+        print(f"DEBUG: Registering tool: {tool.__name__}")
+        try:
+            tool(mcp, orchestrator)
+            print(f"DEBUG: Tool {tool.__name__} registered successfully")
+        except Exception as e:
+            print(f"ERROR: Failed to register tool {tool.__name__}: {e}")
+            import traceback
+            print(f"ERROR: Traceback: {traceback.format_exc()}")
+            raise

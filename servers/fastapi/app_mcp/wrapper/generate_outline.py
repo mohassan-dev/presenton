@@ -46,6 +46,7 @@ async def generate_outline(
             chunker = ScoreBasedChunker()
             try:
                 chunks = await chunker.get_n_chunks(documents[0], n_slides)
+
                 presentation_outlines = PresentationOutlineModel(
                     slides=[chunk.to_slide_outline() for chunk in chunks]
                 )
@@ -66,22 +67,22 @@ async def generate_outline(
 
         try:
             presentation_outlines_json = json.loads(presentation_outlines_text)
-            presentation_outlines = PresentationOutlineModel(
-                **presentation_outlines_json
-            )
         except Exception as e:
-            print(e)
             raise HTTPException(
                 status_code=400,
                 detail="Failed to generate presentation outlines. Please try again.",
             )
+        presentation_outlines = PresentationOutlineModel(
+            **presentation_outlines_json
+        )
 
     # Truncate slides to n_slides
     presentation_outlines.slides = presentation_outlines.slides[:n_slides]
+    outlines = presentation_outlines.model_dump()
 
     # Compose title from first slide
     title = (
-        presentation_outlines.slides[0][:50]
+        presentation_outlines.slides[0].content[:50]
         .replace("#", "")
         .replace("/", "")
         .replace("\\", "")
@@ -89,7 +90,6 @@ async def generate_outline(
     )
 
     # Prepare outlines list
-    outlines = presentation_outlines.model_dump(mode="json")
 
     return {
         "title": title,
