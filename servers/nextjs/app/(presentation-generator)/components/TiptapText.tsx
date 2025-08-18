@@ -5,6 +5,7 @@ import { useEditor, EditorContent, BubbleMenu } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import Underline from "@tiptap/extension-underline";
+import Mathematics, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import {
   Bold,
   Italic,
@@ -30,8 +31,60 @@ const TiptapText: React.FC<TiptapTextProps> = ({
   placeholder = "Enter text...",
   tag = "p",
 }) => {
+  const serializeJsonToTextWithLatex = (node: any): string => {
+    if (!node) return "";
+    if (node.type === "text") {
+      return node.text || "";
+    }
+    if (node.type === "inlineMath" && node.attrs?.latex) {
+      return `$${node.attrs.latex}$`;
+    }
+    if (node.type === "blockMath" && node.attrs?.latex) {
+      return `\n$$${node.attrs.latex}$$\n`;
+    }
+    const contentArray: any[] = Array.isArray(node.content)
+      ? node.content
+      : [];
+    return contentArray.map(serializeJsonToTextWithLatex).join("");
+  };
+
   const editor = useEditor({
-    extensions: [StarterKit, Markdown, Underline],
+    extensions: [
+      StarterKit,
+      Markdown,
+      Underline,
+      Mathematics.configure({
+        katexOptions: { throwOnError: false, strict: "ignore", trust: true },
+        inlineOptions: {
+          onClick: (node, pos, view, event) => {
+            const latex = prompt("Edit inline LaTeX:", node.attrs.latex || "");
+            if (latex) {
+              editor
+                ?.chain()
+                .setNodeSelection(pos)
+                // @ts-ignore commands provided by extension
+                .updateInlineMath({ latex })
+                .focus()
+                .run();
+            }
+          },
+        },
+        blockOptions: {
+          onClick: (node, pos) => {
+            const latex = prompt("Edit block LaTeX:", node.attrs.latex || "");
+            if (latex) {
+              editor
+                ?.chain()
+                .setNodeSelection(pos)
+                // @ts-ignore commands provided by extension
+                .updateBlockMath({ latex })
+                .focus()
+                .run();
+            }
+          },
+        },
+      }),
+    ],
     content: content || placeholder,
 
     editorProps: {
@@ -40,11 +93,16 @@ const TiptapText: React.FC<TiptapTextProps> = ({
         "data-placeholder": placeholder,
       },
     },
+    onCreate: ({ editor }) => {
+      // Migrate any $...$ or $$...$$ strings into math nodes for in-editor rendering
+      try {
+        migrateMathStrings(editor);
+      } catch {}
+    },
     onBlur: ({ editor }) => {
-      const markdown = editor?.storage.markdown.getMarkdown();
-      if (onContentChange) {
-        onContentChange(markdown);
-      }
+      const json = editor.getJSON();
+      const textWithLatex = serializeJsonToTextWithLatex(json);
+      if (onContentChange) onContentChange(textWithLatex.trim());
     },
     editable: true,
     immediatelyRender: false,
@@ -119,6 +177,8 @@ const TiptapText: React.FC<TiptapTextProps> = ({
           >
             <Code className="h-4 w-4" />
           </button>
+          
+          
         </div>
       </BubbleMenu>
 
